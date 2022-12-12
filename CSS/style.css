@@ -1,0 +1,26 @@
+/* Whole document: */
+body{
+  font-family: Cambria;
+  font-size: 13pt;
+}
+.title {
+  text-align: center;
+}
+
+.subtitle {
+  text-align: center;
+  font-family: Cambria;
+  font-size: 26pt;
+}
+
+.date {
+  text-align: center;
+  font-family: Cambria;
+  font-size: 16pt;
+}
+
+.author {
+  text-align: center;
+  font-family: Cambria;
+  font-size: 20pt;
+}
