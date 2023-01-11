@@ -1,22 +1,27 @@
 ---
 title: "**THE UTILITY OF MIXED-EFFECT MODELS IN THE EVALUATION OF COMPLEX GENOMIC TRAITS IN-VITRO**"
-subtitle: "**(COMPLETE R CODE)**"
-author: Nathan Alade
-date: "`r Sys.Date()`"
+author:
+  - Nathan Alade, M.S.^[University of Washington, Department of Pharmaceutics, correspondence; alade@uw.edu]
+  - Abhinav Nath, Ph.D.^[University of Washington, Department of Medicinal Chemistry]
+  - Nina Isoherannen, Ph.D.*
+  - Kenneth Thummel, Ph.D.*
+date: "Last compiled on: `r format(Sys.time(), '%B %d, %Y')`"
 output:
-  pdf_document:
-    toc: TRUE
-    number_sections: TRUE
+  bookdown::pdf_document2:
+    toc: yes
+    number_sections: yes
     highlight: kate
     citation_package: natbib
     latex_engine: xelatex
-  # html_document:
-  #   toc: TRUE
-  #   toc_float: TRUE
-  #   css: "CSS/style.css"
-  #   highlight: zenburn
+  bookdown: default
+subtitle: |
+  | **Supplementary Data**
+  | Complete R Code
 bibliography: packages.bib
 csl: American_Chemical_Society.csl
+include-before:
+- '`\newpage{}`{=latex}'
+
 ---
 
 \newpage
@@ -2752,22 +2757,26 @@ CL_plot2.1
 CL_plot2.2 <- ggplot(data = sensitivity.CL, 
        aes(y = fct_reorder(Condition, standard_resid, .fun = median), 
            x = standard_resid))+
-  geom_vline(xintercept = 0,
-             color = "blue", size = 1)+
-  stat_boxplot(geom = "errorbar",
+    stat_boxplot(geom = "errorbar",
                width = 0.5, size = 0.7) +
-  geom_boxplot(size = 0.7)+
-  geom_vline(xintercept = 0,
+    geom_boxplot(size = 0.7)+
+    geom_vline(xintercept = 0,
              color = "blue", size = 1)+
-  stat_summary(geom = "point", 
-               fun = mean, 
-               color = "red", size = 3)+
-  scale_x_continuous(limits = c(-3,3))+
-  theme_bw(base_size = 14)+
-  xlab(expression(atop("Standardized Residuals", "("*CL[intrinsic]*")")))+
-  ylab("Experimental Condition")
+    geom_point(size = 2.5, shape = 21, aes(fill = Diplotype))+
+  # stat_summary(geom = "point", 
+  #              fun = mean, 
+  #              color = "red", size = 3)+
+    scale_x_continuous(limits = c(-3,3))+
+    theme_bw(base_size = 14)+
+    xlab(expression(atop("Standardized Residuals", "("*CL[intrinsic]*")")))+
+    ylab("Experimental Condition")+
+    geom_vline(xintercept = c(-2,2), 
+             linetype = "dashed", 
+             color = "darkgrey", 
+             size = 1)+
+    ggeasy::easy_add_legend_title("CYP2D6\nGenotype")
 
-CL_plot2.2
+CL.plot2.2
 
 ```
 

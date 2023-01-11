@@ -1,21 +1,24 @@
 ---
-title: "**The Utility of Mixed-Effect Models in the Evaluation of Complex Genomic Traits In-Vitro **"
-author: "**Nathan Alade**"
-subtitle: "[Methods Supplement and R Code]"
-date: "*`r format(Sys.Date(), format = '%B, %Y')`*"
+title: '**The Utility of Mixed-Effect Models in the Evaluation of Complex Genomic Traits In-Vitro **'
+author: '**Nathan Alade**'
+date: '*`r format(Sys.Date(), format = "%B, %Y")`*'
 output:
   html_document:
-    toc: TRUE
-    toc_float: FALSE
-    css: "CSS/style.css"
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: yes
+    theme: flatly
+    css: CSS/style.css
     highlight: zenburn
+subtitle: '[Methods Supplement and R Code]'
 bibliography: packages.bib
 csl: American_Chemical_Society.csl
 ---
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 # **Introduction**
 
@@ -25,20 +28,22 @@ The use of human liver microsomes as a model system to evaluate the impact of co
 
 ## Objective
 
-This supplement provides the `R` code used to conduct the *in-silico* portion of the study, as well as useful functions for evaluating/visualizing  results.
+This supplement provides the `R` code used to conduct the *in-silico* portion of the study, as well as useful functions for evaluating/visualizing results.
 
+------------------------------------------------------------------------
 
 # **R Libraries and Packages**
 
 ```{r setup, include=FALSE, warning=FALSE}
 # Setup ------
-knitr::opts_chunk$set(echo = TRUE, cache = FALSE, 
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE, 
                       warning = FALSE, 
                       message = FALSE, 
-                      eval = TRUE)
+                      eval = TRUE,
+                      fig.align = 'center')
 ```
 
-```{r Packages, eval=T}
+```{r Packages, eval=T, message=FALSE}
 
 # R Packages -----
 library(nlme)       # Non-Linear Mixed Effect Modeling
@@ -53,16 +58,17 @@ library(kableExtra) # Additional Tools for Creating Custom Tables
 # knitr::write_bib(c(.packages()), "References/packages.bib")
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-Citation information for R packages [@R-base; @R-cowplot; @R-dplyr; @R-ggeasy; @R-ggplot2; @R-ggpubr; @R-kableExtra; @R-nlme; @R-readr; @R-scales; @R-tibble; @R-tidyr; @R-tidyverse; @ggplot22016; @nlme2000; @tidyverse2019] used for data can be found in the *References* section. 
+Citation information for R packages [@R-base; @R-cowplot; @R-dplyr; @R-ggeasy; @R-ggplot2; @R-ggpubr; @R-kableExtra; @R-nlme; @R-readr; @R-scales; @R-tibble; @R-tidyr; @R-tidyverse; @ggplot22016; @nlme2000; @tidyverse2019] used for data analysis can be found in the *References* section.
 
+------------------------------------------------------------------------
 
 # **Importing Data**
 
 CYP2D6 mean estimates and frequencies (Dinh et. al., 2016) were imported and summarized by genotype (***referred to as diplotype in R script***). Additionally, an Eta table and parameter estimate table were also generated to be reference later on in the data analysis.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r Data Import}
 
@@ -109,7 +115,7 @@ actual.est <- diplotype.data %>%
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 # **Virtual Population**
 
@@ -137,7 +143,7 @@ A custom simulation function `population.sim()` was scripted to generate a virtu
 
 Within-group between subject variability was set at 25% CV for each genotype (one standard deviation = 0.25 x mean of true value). Below is a simulated population containing 9000 individuals (1000 per diplotype groups) with mean and standard deviations for each group parameter.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r Simulation Function}
 
@@ -228,11 +234,11 @@ population.sim <- function(
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-## Distribution of Virtual Population Parameters 
+## Distribution of Virtual Population Parameters
 
-```{r Vmax and Km Distribution, fig.asp=1.2, fig.keep='last'}
+```{r Vmax and Km Distribution, fig.asp=1.2, fig.keep='last', fig.cap= "Distribution of Michaelis-Menten Parameters for Virtual Population (n=9000) stratified by CYP2D6 genotype. Km represent the Michaelis-Menten constant, and Vmax represents maximal 4-OH Atomoxetine formation (pmol/min/mg protein) by CYP2D6 in human liver microsomes."}
 
 dist.plot <- ggplot(
   
@@ -288,7 +294,7 @@ ggpubr::ggarrange(dist.plot +
   dist.plot2, ncol = 1, common.legend = T, legend = "right")
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Virtual Population Vmax and Km Distribution Table
 
@@ -321,13 +327,13 @@ population.sim(n = 1000, End = 0,`CV%_D` = 25) %>%
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Incorporation of Experimental Error
 
 Residual error was added to simulated data using a constant coefficient of variation structure, where the observed metabolic rate (*V~obs~*)for the *i*^th^individual at the *j*^th^ substrate incubation concentration. The residual errors (*ε~i~*) were normally distributed with a mean of 0 and a standard deviation (*σ*) set at the following values: 0, 0.05, 0.10, or 0.2; corresponding to a coefficient of variation (CV%) of 0%, 5%, 10%, and 20%.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r fig.asp=0.9}
 
@@ -353,7 +359,9 @@ error.nls <- nls(formula = V ~ (Vmax*S)/(Km + S), data = error_design.data,
 start = list(Vmax = 350, Km = 2))
 error.grid <- tibble(S = seq(0,100,0.1), 
                V = (coef(error.nls)[[1]]*S)/(coef(error.nls)[[2]]+S))
+```
 
+```{r eval=TRUE, fig.asp=1, fig.cap="Illustration of experimental error scenarios for 3 subjects with the same genotype. Black line represents the non-linear least-squares Michaelis-Menten fit for the genotype group."}
 # Experimental Error Scenarios Plot -----------
 ggplot(error_design.data %>% filter(S %in% c(0.1, 0.5, 1, 2.5, 5, 10, 25, 50, 100)), 
        aes(x = S, y = V))+
@@ -371,7 +379,7 @@ ggplot(error_design.data %>% filter(S %in% c(0.1, 0.5, 1, 2.5, 5, 10, 25, 50, 10
   
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 # ***In-Silico*** **Experiments**
 
@@ -397,7 +405,7 @@ A custom function, `update_data()`, was created to generate experimental data *i
 
 -   **type** - Experimental design to be simulated (options: rich sampling (9pt) = **"rich"**, sparse sampling (3pt) = **"sparse3pt"**, sparse sampling (4pt) = **"sparse4pt"**, rich sampling for poor metabolizers (16 pt) = **"PM"**, sparse sampling for poor metabolizer (3pt) = **"PM_3pt"**, sparse sampling for poor metabolizer (4pt) = **"PM_4pt"**.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r Stategic Sampling Function}
 
@@ -495,39 +503,29 @@ switch(type,
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Representative Experimental Design Plots {.tabset .tabset-fade .tabset-pills}
 
-Strategic sampling was accomplished by evenly dividing individuals falling under the same CYP2D6 genotype into two groups (Group 1 and Group 2). Each group was designated a pre-defined set of incubation concentrations to be used for the *in-silico* experiment with the total range of incubation concentrations dependent on the type of CYP2D6 metabolizer (as described in the *Strategic Sampling Approach* section above). Note: strategic sampling was not used for rich sample designs, meaning all subject were subjected to the same set of incubations concentrations. 
+Strategic sampling was accomplished by evenly dividing individuals falling under the same CYP2D6 genotype into two groups (Group 1 and Group 2). Each group was designated a pre-defined set of incubation concentrations to be used for the *in-silico* experiment with the total range of incubation concentrations dependent on the type of CYP2D6 metabolizer (as described in the *Strategic Sampling Approach* section above). Note: strategic sampling was not used for rich sample designs, meaning all subject were subjected to the same set of incubations concentrations.
 
 **Extensive and Ultra-Rapid Metabolizers**
 
-*Incubation Concentrations - Rich (9pt)*
--   Set: 0.1, 0.5, 1, 2.5, 5, 10, 25, 50, and 100 uM
+*Incubation Concentrations - Rich (9pt)* - Set: 0.1, 0.5, 1, 2.5, 5, 10, 25, 50, and 100 uM
 
-*Incubation Concentrations - Sparse (3pt)*
--   Set 1: 0.1, 2.5, and 50 uM
--   Set 2: 1, 10, and 100 uM
+*Incubation Concentrations - Sparse (3pt)* - Set 1: 0.1, 2.5, and 50 uM - Set 2: 1, 10, and 100 uM
 
-*Incubation Concentrations - Sparse (4pt)*
--   Set 1: 0.1, 2.5, 25, and 50 uM
--   Set 2: 1, 10, 50, and 100 uM
+*Incubation Concentrations - Sparse (4pt)* - Set 1: 0.1, 2.5, 25, and 50 uM - Set 2: 1, 10, 50, and 100 uM
 
 **Intermediate and Poor Metabolizers**
 
-*Incubation Concentrations - Rich (16pt)*
--   Set: 1, 5, 10, 15, 25, 30, 50, 60, 90, 100, 250, 500, 800, 1000, 1600, and 2000 uM
+*Incubation Concentrations - Rich (16pt)* - Set: 1, 5, 10, 15, 25, 30, 50, 60, 90, 100, 250, 500, 800, 1000, 1600, and 2000 uM
 
-*Incubation Concentrations - Sparse (3pt)*
--   Set 1: 10,100, and 1000 uM
--   Set 2: 25, 250, and 2000 uM
+*Incubation Concentrations - Sparse (3pt)* - Set 1: 10,100, and 1000 uM - Set 2: 25, 250, and 2000 uM
 
-*Incubation Concentrations - Sparse (4pt)*
--   Set 1: 1,10,100, and 1000 uM
--   Set 2: 5,25,250, and 2000 uM
+*Incubation Concentrations - Sparse (4pt)* - Set 1: 1,10,100, and 1000 uM - Set 2: 5,25,250, and 2000 uM
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r Design Strategies Datasets}
 
@@ -672,20 +670,22 @@ D9 <- ggplot(PM_design.data, aes(x = S, y = V))+
 ```
 
 ### **UM/EM Design**
+
 ```{r fig.asp=1}
 ## Extensive Metabolizers
 ggpubr::ggarrange(D7,D5,D6,ncol = 2, nrow = 2, labels = "AUTO")
 ```
 
 ### **IM/PM Design**
+
 ```{r fig.asp=1}
 ## Poor Metabolizers
 ggpubr::ggarrange(D9,D4,D8, ncol = 2, nrow = 2, labels = "AUTO")
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-# **Population Michaelis-Menten Modeling (UM/EM)**
+# **Population Modeling (UM/EM)**
 
 ## Generation of Experimental Data (Base Model - 0% CV)
 
@@ -700,13 +700,13 @@ sparse4pt.data <- update_data(`CV%` = 0, type = "sparse4pt") %>%
   filter(!Diplotype %in% c("4/41", "4/5"))
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Individual-Fits of Experimental Data (Base Model - 0% CV)
 
-A grouped data frame was created for each experiment where reaction rate (V) is predicted by substrate concentration (S) according to subject (ID). Individual fits (un-weighted) and parameter estimates for the data sets were obtained using non-linear least squares function `nlsList()`. Values obtained from the `nlsList()` were used as initial estimates for the non-linear mixed effect model.   
+A grouped data frame was created for each experiment where reaction rate (V) is predicted by substrate concentration (S) according to subject (ID). Individual fits (un-weighted) and parameter estimates for the data sets were obtained using non-linear least squares function `nlsList()`. Values obtained from the `nlsList()` were used as initial estimates for the non-linear mixed effect model.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r Base Model NLS Fit}
 
@@ -721,13 +721,13 @@ sparse3pt_fit.nls <- nlsList(V~SSmicmen(S,Vmax,Km), data = sparse3pt.grp)
 sparse4pt_fit.nls <- nlsList(V~SSmicmen(S,Vmax,Km), data = sparse4pt.grp)
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Non-Linear Mixed Effect Modeling (Base Model - 0% CV)
 
 Non-linear mixed effect modeling was conducted using the `nlme()` package version 3.1 (Bates et al., 2000). The `nlsList()` fits were used as initial estimates for the NLME model. Individual level random effects were applied to both Vmax and Km. A diagonal variance-covariance structure was assigned to each model using the `pdDiag()` function.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r Base Model NLME Fit}
 
@@ -754,13 +754,13 @@ fixef.table %>%
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Non-Linear Mixed Effect Modeling (Covariate Model - 0% CV)
 
-*CYP2D6* genotype was incorporated as a categorical covariate in the model by adding it as a fixed effect that impacts both Vmax and Km. The extracted population level fixed effects for Vmax and Km from the base model (described in the previous section) were used as initial estimates for the covariate model. 
+*CYP2D6* genotype was incorporated as a categorical covariate in the model by adding it as a fixed effect that impacts both Vmax and Km. The extracted population level fixed effects for Vmax and Km from the base model (described in the previous section) were used as initial estimates for the covariate model.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r Inclusion of Genotype as Covariate}
 
@@ -784,12 +784,11 @@ sparse4pt_covar.nlme <- update(sparse4pt.nlme, fixed = Vmax + Km ~ Diplotype,
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Base Model and Covariate Model Evaluation (0% CV)
 
-The impact of adding CYP2D6 genotype as a (covariate on both Vmax and Km) and the whether adding covariates to the model improved fit compared to baseline was assessed using analysis of variance `anova()`. 
-
+The impact of adding CYP2D6 genotype as a (covariate on both Vmax and Km) and the whether adding covariates to the model improved fit compared to baseline was assessed using analysis of variance `anova()`.
 
 ### Overall Impact of adding covariates to base model
 
@@ -800,9 +799,9 @@ anova(sparse3pt.nlme, sparse3pt_covar.nlme)
 anova(sparse4pt.nlme, sparse4pt_covar.nlme)
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-### Impact of adding covariate to Vmax and Km 
+### Impact of adding covariate to Vmax and Km
 
 ```{r Covariate Model ANOVA, warning = F, eval=FALSE}
 
@@ -823,8 +822,7 @@ anova(sparse4pt_covar.nlme)%>%
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Summary Tables of Fixed Effects Estimates (Covariate Model - 0% CV) {.tabset .tabset-fade .tabset-pills}
 
@@ -847,8 +845,7 @@ covaref.table <- rbind(fixef(rich_covar.nlme),
          across(where(is.numeric), round, 2))
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Reference Group (\*1/\*1) Parameter Estimates**
 
@@ -862,8 +859,7 @@ covaref.table %>%
   kable_classic(full_width = T, "striped")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Variant Group ETAs Table**
 
@@ -932,11 +928,11 @@ covar_ci.table%>%
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-# **Population Modeling w/Residual Error (UM/EM)**
+# **Impact of Residual Error**
 
-Data sets with include increasing degrees of residual error (5, 10, and 20% CV) were generated using the `update_data()` function described earlier (see *In-Silico Experiments* section for full description). Additonally, the same methodology for model analysis used in the the previous section (*Population Michaelis-Menten Modeling (UM/EM)*) was applied here to evaluate the impact of increasing experimental error on parameter estimates. 
+Data sets which include increasing degrees of residual error (5, 10, and 20% CV) were generated using the `update_data()` function described earlier (see *In-Silico Experiments* section for full description). Additonally, the same methodology for model analysis used in the the previous section (*Population Michaelis-Menten Modeling (UM/EM)*) was applied here to evaluate the impact of increasing experimental error on parameter estimates.
 
 ## Generation of Experimental Data (Base Model - 5-20% CV)
 
@@ -967,7 +963,7 @@ sparse4pt_CV20.data <- update_data(`CV%` = 20, type = "sparse4pt")%>%
   filter(!Diplotype %in% c("4/41", "4/5"))
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Inidividual-Fits of Experimental Data (Base Model - 5-20% CV)
 
@@ -1001,7 +997,7 @@ sparse3pt_CV20.nls <- nlsList(V~SSmicmen(S,Vmax,Km), data = sparse3pt_CV20.grp)
 sparse4pt_CV20.nls <- nlsList(V~SSmicmen(S,Vmax,Km), data = sparse4pt_CV20.grp)
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Non-Linear Mixed Effect Modeling (Base Model - 5-20% CV)
 
@@ -1022,7 +1018,7 @@ sparse4pt_CV20.nlme <- nlme(sparse4pt_CV20.nls, random = pdDiag(Vmax + Km ~ 1))
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Impact of Residual Error on Fixed Effects {.tabset .tabset-fade .tabset-pills}
 
@@ -1136,7 +1132,7 @@ rbind(CV5_ci.table, CV10_ci.table, CV20_ci.table) %>%
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Non-Linear Mixed Effect Modeling (Covariate Model - 5-20% CV)
 
@@ -1198,13 +1194,12 @@ sparse4pt_CV20_covar.nlme <- update(sparse4pt_CV20.nlme, fixed = Vmax + Km ~ Dip
                               sparse4pt_CV20.fxf[[2]], rep(0,6)))
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Covariate Models Evaluation (5-20% CV) {.tabset .tabset-fade .tabset-pills}
 
-
 ### **Covariate Model (5% CV)**
+
 ```{r}
 # Summary of Covariate Models (w/ variability) -------
 anova(rich_CV5_covar.nlme) # RICH SAMPLING
@@ -1212,145 +1207,146 @@ anova(sparse3pt_CV5_covar.nlme) # SPARSE 3PT SAMPLING
 anova(sparse4pt_CV5_covar.nlme) # SPARSE 4PT SAMPLING
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Covariate Model (10% CV)**
+
 ```{r}
 anova(rich_CV10_covar.nlme) # RICH SAMPLING
 anova(sparse3pt_CV10_covar.nlme) # SPARSE 3PT SAMPLING
 anova(sparse4pt_CV10_covar.nlme) # SPARSE 4PT SAMPLING
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Covariate Model (20% CV)**
+
 ```{r}
 anova(rich_CV20_covar.nlme) # RICH SAMPLING
 anova(sparse3pt_CV20_covar.nlme) # SPARSE 3PT SAMPLING
 anova(sparse4pt_CV20_covar.nlme) # SPARSE 4PT SAMPLING
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-# **Weighting Non-Linear Mixed Effect Model (UM/EM)**
+# **Weighting Model (UM/EM)**
 
 ## Evaluating Heteroscedacity of Residual Error (UM/EM) {.tabset .tabset-fade .tabset-pills}
 
-Heterogeneity of variance was examined qualitatively by plotting standardized residules (Pearson). Heteroscedacity was corrected by modeleling residual variance as a power function of mean fitted value using the `varPower()` function. 
+Heterogeneity of variance was examined qualitatively by plotting standardized residules (Pearson). Heteroscedacity was corrected by modeleling residual variance as a power function of mean fitted value using the `varPower()` function.
 
 ### **Rich (0% CV)**
+
 ```{r}
 plot(rich_covar.nlme, main = "Rich (9pt, 0% CV)")
 plot(rich_covar.nlme %>% update(weights = varPower()), 
      main = "Rich (9pt, 0% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (3pt, 0% CV)**
+
 ```{r}
 plot(sparse3pt_covar.nlme, main = "Sparse (3pt, 0% CV)")
 plot(sparse3pt_covar.nlme %>% update(weights = varPower()), 
      main = "Sparse (3pt, 0% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (4pt, 0% CV)**
+
 ```{r}
 plot(sparse4pt_covar.nlme, main = "Sparse (4pt, 0% CV)")
 plot(sparse4pt_covar.nlme %>% update(weights = varPower()), 
      main = "Sparse (4pt, 0% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Rich (5% CV)**
+
 ```{r}
 plot(rich_CV5_covar.nlme, main = "Rich (9pt, 5% CV)")
 plot(rich_CV5_covar.nlme %>% update(weights = varPower()), 
      main = "Rich (9pt, 5% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (3pt, 5% CV)**
+
 ```{r}
 plot(sparse3pt_CV5_covar.nlme, main = "Sparse (3pt, 5% CV)")
 plot(sparse3pt_CV5_covar.nlme %>% update(weights = varPower()), 
      main = "Sparse (3pt, 5% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (4pt, 5% CV)**
+
 ```{r}
 plot(sparse4pt_CV5_covar.nlme, main = "Sparse (4pt, 5% CV)")
 plot(sparse4pt_CV5_covar.nlme %>% update(weights = varPower()), 
      main = "Sparse (4pt, 5% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Rich (10% CV)**
+
 ```{r}
 plot(rich_CV10_covar.nlme, main = "Rich (9pt, 10% CV)")
 plot(rich_CV10_covar.nlme %>% update(weights = varPower()), 
      main = "Rich (9pt, 10% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (3pt, 10% CV)**
+
 ```{r}
 plot(sparse3pt_CV10_covar.nlme, main = "Sparse (3pt, 10% CV)")
 plot(sparse3pt_CV10_covar.nlme %>% update(weights = varPower()), 
      main = "Sparse (3pt, 10% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (4pt, 10% CV)**
+
 ```{r}
 plot(sparse4pt_CV10_covar.nlme, main = "Sparse (4pt, 10% CV)")
 plot(sparse4pt_CV10_covar.nlme %>% update(weights = varPower()), 
      main = "Sparse (4pt, 10% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Rich (20% CV)**
+
 ```{r}
 plot(rich_CV20_covar.nlme, main = "Rich (9pt, 20% CV)")
 plot(rich_CV20_covar.nlme %>% update(weights = varPower()), 
      main = "Rich (9pt, 20% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (3pt, 20% CV)**
+
 ```{r}
 plot(sparse3pt_CV20_covar.nlme, main = "Sparse (3pt, 20% CV)")
 plot(sparse3pt_CV20_covar.nlme %>% update(weights = varPower()), 
      main = "Sparse (3pt, 20% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (4pt, 20% CV)**
+
 ```{r}
 plot(sparse4pt_CV20_covar.nlme, main = "Sparse (4pt, 20% CV)")
 plot(sparse4pt_CV20_covar.nlme %>% update(weights = varPower()), 
@@ -1409,7 +1405,7 @@ anova(sparse4pt_CV20.nlme,
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Adjusting Residual Error Models
 
@@ -1428,9 +1424,9 @@ sparse4pt_CV20_covar.nlme <- sparse4pt_CV20_covar.nlme %>% update(weights = varP
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-## Covariate Model Summary Data 
+## Covariate Model Summary Data
 
 ```{r fig.asp=1}
 
@@ -1532,10 +1528,9 @@ final_km.est <- covar_Km.table %>%
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-# **Population Michaelis-Menten Modeling (IM/PM)**
+# **Population Modeling (IM/PM)**
 
 ## Non-Linear Mixed Effect Modeling (Covariate Model - 0% CV)
 
@@ -1577,8 +1572,7 @@ PM_4pt_covar.nlme <- update(PM_4pt.nlme,
                             fixed.effects(PM_4pt.nlme)[[2]], rep(0,1)))
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Non-Linear Mixed Effect Modeling (Covariate Model - 5-20% CV)
 
@@ -1691,129 +1685,129 @@ PM_4pt_CV20_covar.nlme <- update(PM_4pt_CV20.nlme,
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-# **Weighting Non-Linear Mixed Effect Model (IM/PM)**
+# **Weighting Model (IM/PM)**
 
 ## Evaluating Heteroscedacity of Residual Error (IM/PM) {.tabset .tabset-fade .tabset-pills}
 
 ### **Rich (0% CV)**
+
 ```{r}
 plot(PM_covar.nlme, main = "PM Rich (16pt, 0% CV)")
 plot(PM_covar.nlme %>% update(weights = varPower()), 
      main = "PM Rich (16pt, 0% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (3pt, 0% CV)**
+
 ```{r}
 plot(PM_3pt_covar.nlme, main = "PM Sparse (3pt, 0% CV)")
 plot(PM_3pt_covar.nlme %>% update(weights = varPower()), 
      main = "PM Sparse (3pt, 0% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (4pt, 0% CV)**
+
 ```{r}
 plot(PM_4pt_covar.nlme, main = "PM Sparse (4pt, 0% CV)")
 plot(PM_4pt_covar.nlme %>% update(weights = varPower()), 
      main = "PM Sparse (4pt, 0% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Rich (5% CV)**
+
 ```{r}
 plot(PM_CV5_covar.nlme, main = "PM Rich (16pt, 5% CV)")
 plot(PM_CV5_covar.nlme %>% update(weights = varPower()), 
      main = "Rich (16pt, 5% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (3pt, 5% CV)**
+
 ```{r}
 plot(PM_3pt_CV5_covar.nlme, main = "PM Sparse (3pt, 5% CV)")
 plot(PM_3pt_CV5_covar.nlme %>% update(weights = varPower()), 
      main = "PM Sparse (3pt, 5% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (4pt, 5% CV)**
+
 ```{r}
 plot(PM_4pt_CV5_covar.nlme, main = "PM Sparse (4pt, 5% CV)")
 plot(PM_4pt_CV5_covar.nlme %>% update(weights = varPower()), 
      main = "PM Sparse (4pt, 5% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Rich (10% CV)**
+
 ```{r}
 plot(PM_CV10_covar.nlme, main = "PM Rich (16pt, 10% CV)")
 plot(PM_CV10_covar.nlme %>% update(weights = varPower()), 
      main = "PM Rich (16pt, 10% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (3pt, 10% CV)**
+
 ```{r}
 plot(PM_3pt_CV10_covar.nlme, main = "PM Sparse (3pt, 10% CV)")
 plot(PM_3pt_CV10_covar.nlme %>% update(weights = varPower()), 
      main = "PM Sparse (3pt, 10% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (4pt, 10% CV)**
+
 ```{r}
 plot(PM_4pt_CV10_covar.nlme, main = "PM Sparse (4pt, 10% CV)")
 plot(PM_4pt_CV10_covar.nlme %>% update(weights = varPower()), 
      main = "PM Sparse (4pt, 10% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Rich (20% CV)**
+
 ```{r}
 plot(PM_CV20_covar.nlme, main = "PM Rich (16pt, 20% CV)")
 plot(PM_CV20_covar.nlme %>% update(weights = varPower()), 
      main = "PM Rich (16pt, 20% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (3pt, 20% CV)**
+
 ```{r}
 plot(PM_3pt_CV20_covar.nlme, main = "PM Sparse (3pt, 20% CV)")
 plot(PM_3pt_CV20_covar.nlme %>% update(weights = varPower()), 
      main = "PM Sparse (3pt, 20% CV, weighted)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse (4pt, 20% CV)**
+
 ```{r}
 plot(PM_4pt_CV20_covar.nlme, main = "PM Sparse (4pt, 20% CV)")
 plot(PM_4pt_CV20_covar.nlme %>% update(weights = varPower()), 
      main = "PM Sparse (4pt, 20% CV, weighted)")
 ```
-
 
 ```{r include=FALSE, eval=FALSE}
 
@@ -1869,7 +1863,7 @@ anova(PM_4pt_CV20.nlme,
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Adjusting PM Variance Structure
 
@@ -1890,8 +1884,7 @@ PM_3pt_CV20_covar.nlme <- PM_3pt_CV20_covar.nlme %>% update(weights = varPower()
 PM_4pt_CV20_covar.nlme <- PM_4pt_CV20_covar.nlme %>% update(weights = varPower())
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## PM Covariate Model Summary Data
 
@@ -1998,19 +1991,19 @@ PM_final_km.est <- PM_covar_Km.table %>%
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-# **Final Model Evaluation (Qualitative Checks)**
+# **Model Accuracy**
 
 ## Combining Data Across All Study Design
+
 ```{r fig.asp = 1}
 
 all_km.est <- rbind(final_km.est, PM_final_km.est)
 all_vmax.est <- rbind(final_vmax.est, PM_final_vmax.est)
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Predicted vs Actual Figure (Vmax)
 
@@ -2032,7 +2025,7 @@ Vmax.plot <- ggplot(data = all_vmax.est, aes(x = Vmax, y = `Predicted (Vmax)`))+
 Vmax.plot
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Predicted vs Actual Figure (Km)
 
@@ -2054,12 +2047,11 @@ Km.plot <- ggplot(data = all_km.est, aes(x = Km, y = `Predicted (Km)`))+
 Km.plot
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
+# **Summary Tables**
 
-# **Summary Tables for Covariate Model Estimates (w/ 95% CI)**
-
-## t-Table Extractor Function 
+## t-Table Extractor Function
 
 ```{r}
 
@@ -2089,8 +2081,7 @@ summary(data.nlme)$tTable %>%
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Final Model Parameter Estimates and Standard Error Datasets
 
@@ -2136,8 +2127,7 @@ PM_4pt_CV20_covar.tTable <- get_tTable(PM_4pt_CV20_covar.nlme, "Sparse (20% CV, 
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Combining Datasets across Experimental Conditions
 
@@ -2173,8 +2163,7 @@ complete_CV_covar.tTable <- rbind(
       PM_4pt_CV20_covar.tTable)
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Confidence Interval Data (All Conditions)
 
@@ -2215,10 +2204,9 @@ PM_4pt_CV20_covar.intervals <- intervals(PM_4pt_CV20_covar.nlme, which = "fixed"
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-## Confidence Interval Extractor Function 
+## Confidence Interval Extractor Function
 
 ```{r}
 
@@ -2257,8 +2245,7 @@ extract_CI3 <- function(int.data, name, PM = FALSE){
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Generating Confidence Interval Datatables
 
@@ -2347,8 +2334,7 @@ PM_CV20_covar_ci.table <- cbind(
   relocate(Actual, .after = Diplotype)
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Renaming Datatable Columns
 
@@ -2395,12 +2381,11 @@ colnames(PM_CV20_covar_ci.table) <- c("Parameter","Diplotype","Actual",
                                   "Estimate", "CI (95%)", "RSE(%)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Covariate Model CI Tables (UM/EM) {.tabset .tabset-fade .tabset-pills}
 
-### **Covariate Model (0% CV) CI Table** 
+### **Covariate Model (0% CV) CI Table**
 
 ```{r}
 
@@ -2418,10 +2403,9 @@ CV0_covar_ci.table %>%
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-### **Covariate Model (5% CV) CI Table** 
+### **Covariate Model (5% CV) CI Table**
 
 ```{r}
 
@@ -2439,10 +2423,9 @@ CV5_covar_ci.table %>%
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-### **Covariate Model (10% CV) CI Table** 
+### **Covariate Model (10% CV) CI Table**
 
 ```{r}
 
@@ -2460,10 +2443,9 @@ CV10_covar_ci.table %>%
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-### **Covariate Model (20% CV) CI Table **
+### **Covariate Model (20% CV) CI Table** 
 
 ```{r}
 
@@ -2482,7 +2464,7 @@ CV20_covar_ci.table %>%
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Covariate Model CI Tables (IM/PM) {.tabset .tabset-fade .tabset-pills}
 
@@ -2502,10 +2484,9 @@ PM_CV0_covar_ci.table %>%
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-### **IM/PM Covariate Model (5% CV) CI Table **
+### **IM/PM Covariate Model (5% CV) CI Table** 
 
 ```{r}
 
@@ -2521,10 +2502,9 @@ PM_CV5_covar_ci.table %>%
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-### **PM Covariate Model (10% CV) CI Table **
+### **PM Covariate Model (10% CV) CI Table** 
 
 ```{r}
 
@@ -2540,10 +2520,9 @@ PM_CV10_covar_ci.table %>%
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-### **PM Covariate Model (20% CV) CI Table **
+### **PM Covariate Model (20% CV) CI Table** 
 
 ```{r}
 
@@ -2559,29 +2538,27 @@ PM_CV20_covar_ci.table %>%
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 # **Final Model Predictions**
 
 ## NLME Predictor Function
 
-The predictor function `sim_nlme()` was scripted to generate tidy data frames of NLME predictions given the specified substrate concentration range. The inputs for this function are as followed: 
+The predictor function `sim_nlme()` was scripted to generate tidy data frames of NLME predictions given the specified substrate concentration range. The inputs for this function are as followed:
 
 -   **tTable** - extracted NLME model tTable estimates (see *Final Model Parameter Estimates and Standard Error Datasets* section).
 
 -   **label** - Specifies the condition being simulated (ex. "Rich 0% CV").
 
--   **Group** - Specifies the CYP2D6 metabolizer category (ex. "IM & PM"). 
+-   **Group** - Specifies the CYP2D6 metabolizer category (ex. "IM & PM").
 
 -   **Start** - Substrate concentration to start simulation (default = 0 uM).
 
--   **End** - Last substrate concentration (default = 100 uM). 
+-   **End** - Last substrate concentration (default = 100 uM).
 
 -   **by** - Simulated concentration increment (default = 0.1)
 
--------------------------------------------------------
-
+------------------------------------------------------------------------
 
 ```{r}
 
@@ -2602,11 +2579,11 @@ sim_nlme <- function(tTable, label, Group, Start = 0, End = 100, by = 0.1){
 }
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Update Data Function (Extended)
 
-`update_data_full()` is an extended version of the previous `update_data()` function; it differs by retaining Km and Vmax information in the output. It was created as an intermediate function for the revised `update_data2()` function (see below). 
+`update_data_full()` is an extended version of the previous `update_data()` function; it differs by retaining Km and Vmax information in the output. It was created as an intermediate function for the revised `update_data2()` function (see below).
 
 ```{r}
 
@@ -2702,13 +2679,13 @@ switch(type,
 }
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Update Data Function (Version 2)
 
-Revised vs of `update_data()` designed to allow user to include more information (i.e., Condition, and Group) to the simulated data output. 
+Revised vs of `update_data()` designed to allow user to include more information (i.e., Condition, and Group) to the simulated data output.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r}
 
@@ -2733,8 +2710,7 @@ update_data2 <- function(`CV%`, type, Condition, Group,
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Sensitivity Analysis Data (Population Level)
 
@@ -2771,8 +2747,7 @@ sensitivity.data$Condition <- factor(sensitivity.data$Condition,
       
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Sensitivity Analysis Data (Individual Level)
 
@@ -2808,16 +2783,15 @@ sensitivity.pop$Condition <- factor(sensitivity.pop$Condition,
                                      levels = unique(sensitivity.pop$Condition))
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-# **Publication Figures** 
+# **Publication Figures**
 
 ## CYP2D6 Mediated 4-OH Atomoxetine Metabolism {.tabset .tabset-fade .tabset-pills}
 
 ### **4-OH Atomoxetine Formation (EM)**
 
-```{r fig.asp=1}
+```{r fig.asp=1, fig.cap="In-silico NLME predicted Michaelis-Menten fits of 4-hydroxy-atomoxetine formation using human liver microsomes by CYP2D6 extensive metabolizers (*1/*1, *1/*2, *1/*4, *2/*2, *2/*3, and *2/*4) across all experimental conditions (sparse 3-4pt, 0-20% CV)."}
 
 sensitivity_mid_end.plot <- ggplot(data = sensitivity.data %>% 
                                       filter(S <=100,
@@ -2847,12 +2821,11 @@ sensitivity_mid_end.plot+
   ggeasy::easy_add_legend_title("Genotype")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **4-OH Atomoxetine Formation (UM)**
 
-```{r fig.asp = 1}
+```{r fig.asp = 1, fig.cap="In-silico NLME predicted Michaelis-Menten fits of 4-hydroxy-atomoxetine formation using human liver microsomes by CYP2D6 ultra-rapid metabolizers (*1/*2X2) across all experimental conditions (sparse 3-4pt, 0-20% CV)."}
 
 # Rapid Metabolizers -------
 sensitivity_high_end.plot <- ggplot(data = sensitivity.data %>%
@@ -2882,12 +2855,11 @@ sensitivity_high_end.plot +
   ggeasy::easy_add_legend_title("Genotype")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **4-OH Atomoxetine Formation (IM/PM)**
 
-```{r fig.asp=1}
+```{r fig.asp=1, fig.cap="In-silico NLME predicted Michaelis-Menten fits of 4-hydroxy-atomoxetine formation using human liver microsomes by CYP2D6 intermediat and poor metabolizers (*4/*41, and *4/*5) across all experimental conditions (sparse 3-4pt, 0-20% CV)."}
 
 # Poor Metabolizers ----
 sensitivity_low_end.plot <- ggplot(data = sensitivity.data %>%
@@ -2917,7 +2889,7 @@ sensitivity_low_end.plot+
   ggeasy::easy_add_legend_title("Genotype")
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## CYP2D6 Intrinsic Clearance Predicted vs Actual {.tabset .tabset-fade .tabset-pills}
 
@@ -2943,36 +2915,39 @@ sensitivity.CL <-  sensitivity.data %>%
          ungroup()
 
 
-CL.plot <- ggplot(data = sensitivity.CL, aes(x = CLint_actual, y = CLint))+
-  geom_point(size = 3.5, alpha = 0.65, aes(fill = Condition), shape = 21)+
-  geom_abline(slope = 1, intercept = 0, color = "red")+
-  geom_abline(slope = 1, intercept = 0.2, color = "red", linetype = "dashed")+
-  geom_abline(slope = 1, intercept = -0.2, color = "red", linetype = "dashed")+
-   geom_abline(slope = 1, intercept = 0.15, color = "blue", linetype = "dashed")+
-  geom_abline(slope = 1, intercept = -0.15, color = "blue", linetype = "dashed")+
-  scale_y_log10()+
-  scale_x_log10()+
-  # facet_wrap(.~Condition, ncol = 4, scales = "free")+
-  xlab("Intrinsic Clearance (Actual)")+
-  ylab("Intrinsic Clearance (Predicted)")+
-  theme_bw(base_size = 14)+
-  ggeasy::easy_move_legend("right")+
-  scale_fill_viridis_d()+
-  # coord_cartesian(clip = "off")+
-  facet_wrap(~Group, ncol = 1, scales = "free")
+CL_plot2.2 <- ggplot(data = sensitivity.CL, 
+       aes(y = fct_reorder(Condition, standard_resid, .fun = median), 
+           x = standard_resid))+
+    stat_boxplot(geom = "errorbar",
+               width = 0.5, size = 0.7) +
+    geom_boxplot(size = 0.7)+
+    geom_vline(xintercept = 0,
+             color = "blue", size = 1)+
+    geom_point(size = 2.5, shape = 21, aes(fill = Diplotype))+
+  # stat_summary(geom = "point", 
+  #              fun = mean, 
+  #              color = "red", size = 3)+
+    scale_x_continuous(limits = c(-3,3))+
+    theme_bw(base_size = 14)+
+    xlab(expression(atop("Standardized Residuals", "("*CL[intrinsic]*")")))+
+    ylab("Experimental Condition")+
+    geom_vline(xintercept = c(-2,2), 
+             linetype = "dashed", 
+             color = "darkgrey", 
+             size = 1)+
+    ggeasy::easy_add_legend_title("CYP2D6\nGenotype")
+
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **CL~int~ Predicted vs Actual**
 
 ```{r fig.asp=1}
-CL.plot 
+CL.plot2.2
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **CYP2D6 Intrinsic Clearance Residual (1/2)**
 
@@ -2989,11 +2964,12 @@ CL_plot2.1 <- ggplot(data = sensitivity.CL,
   xlab("CYP2D6 Genotype")+
   ylab(expression(atop("Standardized Residuals", "("*CL[intrinsic]*")")))
 
+  
 CL_plot2.1
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **CYP2D6 Intrinsic Clearance Residual (2/2)**
 
@@ -3002,29 +2978,33 @@ CL_plot2.1
 CL_plot2.2 <- ggplot(data = sensitivity.CL, 
        aes(y = fct_reorder(Condition, standard_resid, .fun = median), 
            x = standard_resid))+
-  geom_vline(xintercept = 0,
-             color = "blue", size = 1)+
-  stat_boxplot(geom = "errorbar",
+    stat_boxplot(geom = "errorbar",
                width = 0.5, size = 0.7) +
-  geom_boxplot(size = 0.7)+
-  geom_vline(xintercept = 0,
+    geom_boxplot(size = 0.7)+
+    geom_vline(xintercept = 0,
              color = "blue", size = 1)+
-  stat_summary(geom = "point", 
-               fun = mean, 
-               color = "red", size = 3)+
-  scale_x_continuous(limits = c(-3,3))+
-  theme_bw(base_size = 14)+
-  xlab(expression(atop("Standardized Residuals", "("*CL[intrinsic]*")")))+
-  ylab("Experimental Condition")
+    geom_point(size = 2.5, shape = 21, aes(fill = Diplotype))+
+  # stat_summary(geom = "point", 
+  #              fun = mean, 
+  #              color = "red", size = 3)+
+    scale_x_continuous(limits = c(-3,3))+
+    theme_bw(base_size = 14)+
+    xlab(expression(atop("Standardized Residuals", "("*CL[intrinsic]*")")))+
+    ylab("Experimental Condition")+
+    geom_vline(xintercept = c(-2,2), 
+             linetype = "dashed", 
+             color = "darkgrey", 
+             size = 1)+
+    ggeasy::easy_add_legend_title("CYP2D6\nGenotype")
 
 CL_plot2.2
 
+
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-# **Diagnostic Plots (Final Model)** 
+# **Diagnostic Plots**
 
 ## Residual Plots {.tabset .tabset-fade .tabset-pills}
 
@@ -3037,8 +3017,7 @@ plot(rich_CV10_covar.nlme, main = "Rich (10% CV)")
 plot(rich_CV20_covar.nlme, main = "Rich (20% CV)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse 3pt**
 
@@ -3050,8 +3029,7 @@ plot(sparse3pt_CV10_covar.nlme, main = "Sparse (3pt, 10% CV)")
 plot(sparse3pt_CV20_covar.nlme, main = "Sparse (3pt, 20% CV)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse 4pt**
 
@@ -3064,8 +3042,7 @@ plot(sparse4pt_CV20_covar.nlme, main = "Sparse (4pt, 20% CV)")
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **PM Rich**
 
@@ -3077,8 +3054,7 @@ plot(PM_CV10_covar.nlme, main = "PM Rich (10% CV)")
 plot(PM_CV20_covar.nlme, main = "PM Rich (20% CV)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **PM Sparse 3pt**
 
@@ -3090,8 +3066,7 @@ plot(PM_3pt_CV10_covar.nlme, main = "PM Sparse (3pt, 10% CV)")
 plot(PM_3pt_CV20_covar.nlme, main = "PM Spase (3pt, 20% CV)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **PM Sparse 4pt**
 
@@ -3103,11 +3078,12 @@ plot(PM_4pt_CV10_covar.nlme, main = "PM Sparse (4pt, 10% CV)")
 plot(PM_4pt_CV20_covar.nlme, main = "PM Sparse (4pt, 20% CV)")
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Predicted vs Observed Plots by CYP2D6 Genotype (UM/EM) {.tabset .tabset-fade .tabset-pills}
 
 ### **Rich Designs**
+
 ```{r}
 
 plot(rich_covar.nlme,log(V)~log(fitted(.))|Diplotype, 
@@ -3127,10 +3103,10 @@ plot(rich_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype,
      xlab = "log(Fitted values)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse Designs (3pt)**
+
 ```{r}
 plot(sparse3pt_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
      abline = c(0,1), main = "Sparse (3pt, 0% CV)", 
@@ -3149,10 +3125,10 @@ plot(sparse3pt_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype,
      xlab = "log(Fitted values)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse Designs (4pt)**
+
 ```{r}
 plot(sparse4pt_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
      abline = c(0,1), main = "Sparse (4pt, 0% CV )", 
@@ -3171,11 +3147,12 @@ plot(sparse4pt_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype,
      xlab = "log(Fitted values)")
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Predicted vs Observed Plots by CYP2D6 Genotype (IM/PM) {.tabset .tabset-fade .tabset-pills}
 
 ### **Rich Designs**
+
 ```{r}
 
 plot(PM_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
@@ -3195,10 +3172,10 @@ plot(PM_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype,
      main = "PM Rich (20% CV)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse Designs (3pt)**
+
 ```{r}
 plot(PM_3pt_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
      abline = c(0,1), xlab = "log(Fitted values)", 
@@ -3217,10 +3194,10 @@ plot(PM_3pt_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype,
      main = "PM Sparse (3pt, 20% CV)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Sparse Designs (4pt)**
+
 ```{r}
 plot(PM_4pt_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
      abline = c(0,1), xlab = "log(Fitted values)", 
@@ -3239,14 +3216,13 @@ plot(PM_4pt_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype,
      main = "PM Sparse (4pt, 20% CV)")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 # **Bootstrap Analysis**
 
 ## Virtual Population Function
 
-An updated version of a previous function `population.sim()` was generated called `population.sim2()`. The updated function provides greater flexibility substrate concentration range below 0.50 uM.  
+An updated version of a previous function `population.sim()` was generated called `population.sim2()`. The updated function provides greater flexibility substrate concentration range below 0.50 uM.
 
 ```{r eval=FALSE}
 # ========== POPULATION SIMULATION FUNCTION =================#
@@ -3338,14 +3314,13 @@ population.sim2 <- function(
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-## Generating Virtual Population (with Residual Error) 
+## Generating Virtual Population (with Residual Error)
 
 Michaelis-Menten kinetics were simulated for each subject in the virtual population across the 4 experimental designs (0%, 5%, 10%, and 20% CV).
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r eval=FALSE}
 # ========== CREATE BOOTSTRAP VIRTUAL POPULATIONS ============#
@@ -3364,13 +3339,13 @@ CV10_Sample_populations = list()
 CV20_Sample_populations = list()
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Bootstrap Sampling of Virtual Population
 
-Using a `for()` loop, a total of 10 bootstrapped populations were generated for each experiental design (0-20% CV) by randomly sampling (with replacement) 1% of the corresponding virtual population (10 subject per genotype group, n = 90).  
+Using a `for()` loop, a total of 10 bootstrapped populations were generated for each experiental design (0-20% CV) by randomly sampling (with replacement) 1% of the corresponding virtual population (10 subject per genotype group, n = 90).
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r eval=FALSE}
 ## Bootstrap for-loop
@@ -3418,8 +3393,7 @@ names(Bootstrap.populations)<- c("CV0_Pops",
 # saveRDS(Bootstrap.populations, "R Output/Bootsrap Populations Data.rds")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Sampling Function
 
@@ -3427,9 +3401,9 @@ Strategic sampling designs were implemented using a custom function `update_pop(
 
 -   **pop_data** - A dataframe or indexed dataframe from a list of dataframes.
 
--   **type** - Specifies the strategic sampling design to be implemented. Options include: *"rich", "sparse3pt", "sparse4pt", "PM", "PM_3pt", "PM_4pt"*. 
+-   **type** - Specifies the strategic sampling design to be implemented. Options include: *"rich", "sparse3pt", "sparse4pt", "PM", "PM_3pt", "PM_4pt"*.
 
----------------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r eval=FALSE}
 
@@ -3529,14 +3503,13 @@ update_pop <-function(pop_data, type){
 }
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## **In-Silico** Experiments (Rich and Strategic Sampling)
 
-Using a `for()` loop, each virtual population was subject to all 3 sampling strategies (rich, sparse 3pt, and sparse 4pt); with sampling range varying according to CYP2D6 genotype as described previously (see *Strategic Sampling Approach*). Data was combined as a list of a list of dataframes with the first level (n = 4) being %CV specific data, the second level (n = 3) being sampling strategy with each variable at this level containing data for 10 unique population (n = 120 total datasets). 
+Using a `for()` loop, each virtual population was subject to all 3 sampling strategies (rich, sparse 3pt, and sparse 4pt); with sampling range varying according to CYP2D6 genotype as described previously (see *Strategic Sampling Approach*). Data was combined as a list of a list of dataframes with the first level (n = 4) being %CV specific data, the second level (n = 3) being sampling strategy with each variable at this level containing data for 10 unique population (n = 120 total datasets).
 
----------------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r eval=FALSE}
 # Create Experimental Data sets Populations ---------
@@ -3600,8 +3573,7 @@ names(Complete_Bootstrap.data) <-c("CV0","CV5","CV10","CV20")
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## NLME Fitting Function
 
@@ -3609,11 +3581,11 @@ names(Complete_Bootstrap.data) <-c("CV0","CV5","CV10","CV20")
 
 -   **data** - Data to be used for model fitting
 
--   **type** - Type of CYP2D6 metabolizer. Options include: *"EM"* for extensive metabolizer and ultra-rapid metabolizer data, and *"PM"* for intermediate and poor metabolizer data (default = "EM"). 
+-   **type** - Type of CYP2D6 metabolizer. Options include: *"EM"* for extensive metabolizer and ultra-rapid metabolizer data, and *"PM"* for intermediate and poor metabolizer data (default = "EM").
 
--   **which** - Specifies the desired model output. Options include: *"nls"* = non-linear least squares, *"base.model"* for NLME with out covariates, *"covar.model"* for NLME with covariates (CYP2D6 genotype); default = "covar.model". 
+-   **which** - Specifies the desired model output. Options include: *"nls"* = non-linear least squares, *"base.model"* for NLME with out covariates, *"covar.model"* for NLME with covariates (CYP2D6 genotype); default = "covar.model".
 
----------------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r eval=FALSE}
 
@@ -3661,12 +3633,11 @@ switch (which,
 }
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## NLME Estimate Extraction Function
 
-`extract_nlme_est()` is a custom function used to fit, extract, and tidy NLME parameter estimates from experimental data.  This function is optimized to work within the context of a `for()` loop, and contains the `fit_nlme()` function as a dependency. The inputs for the function include the following:
+`extract_nlme_est()` is a custom function used to fit, extract, and tidy NLME parameter estimates from experimental data. This function is optimized to work within the context of a `for()` loop, and contains the `fit_nlme()` function as a dependency. The inputs for the function include the following:
 
 -   **exp.data** - Experimental data that NLME estimates are desired from.
 
@@ -3674,9 +3645,9 @@ switch (which,
 
 -   **PM** - TRUE or FALSE argument specifying where data belongs to IM/PM CYP2D6 genotype (TRUE), or UM/EM CYP2D6 genotype (FALSE); default = "FALSE".
 
--   **pop.num** - Label specifying which bootstrapped population is being analyzed (default = 1). 
+-   **pop.num** - Label specifying which bootstrapped population is being analyzed (default = 1).
 
----------------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r eval=FALSE}
 
@@ -3718,14 +3689,13 @@ extract_nlme_est(exp.data = Complete_Bootstrap.data$CV0$sparse3pt[[3]],
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Non-Linear Mixed Effect Modeling (Bootstrap Populations)
 
-Using a `for()` loop, bootstrapped parameter estimates were extracted from experimental data (`Complete_Bootstrap.data`) using the `extract_nlme.est()` function. Parameter estimate for all experimental designs and conditions for each population were stored in object `Complete_Bootstrap.est` as a list. A collapsed version was saved as `Complete Bootstrap table.RDS` for data analysis and user reproducibility purposes. 
+Using a `for()` loop, bootstrapped parameter estimates were extracted from experimental data (`Complete_Bootstrap.data`) using the `extract_nlme.est()` function. Parameter estimate for all experimental designs and conditions for each population were stored in object `Complete_Bootstrap.est` as a list. A collapsed version was saved as `Complete Bootstrap table.RDS` for data analysis and user reproducibility purposes.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ```{r eval=FALSE}
 
@@ -3821,22 +3791,21 @@ Complete_Bootstrap.table <- bind_rows(Complete_Bootstrap.est)
 
 ```
 
+------------------------------------------------------------------------
 
--------------------------------------------------------
-
-# **Model Evaluation (Bootstrap Analysis)**
+# **Bootstrap Evaluation**
 
 Non-parametric bootstrap analysis based on a total of 120 generated data sets (10 re-sampled populations per experimental condition) was performed to evaluate the precision of the final model parameters (see separate *Bootstrap Analysis* section above). Mean parameter estimates and 95% confidence intervals for each condition were summarized by genotype. Confidence intervals were calculated using the a custom confidence interval function `CI()` detailed below based on (Equation 6); where confidence interval (CI) is equal to the mean value of the sample population plus or minus the t-score at significance level(0.05) for N-1 degrees of freedom multiplied by the standard error of the sample population mean. The inputs for the `CI()` function are as followed:
 
--   **x** - A vector of values for which a confidence interval is to be calculated. 
+-   **x** - A vector of values for which a confidence interval is to be calculated.
 
 -   **alpha** - Alpha level for confidence interval (default = 0.05)
 
--   **which** - Specifies the desired output. Options: confidence interval rang = **"ci"**, lower interval estimate = **"lower"**, upper interval estimate = **"upper"**, mean estimate = **"est"**, all estimates (mean [lower - upper]) = **"all"**. 
+-   **which** - Specifies the desired output. Options: confidence interval rang = **"ci"**, lower interval estimate = **"lower"**, upper interval estimate = **"upper"**, mean estimate = **"est"**, all estimates (mean [lower - upper]) = **"all"**.
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
-## Confidence Interval (95%) Function 
+## Confidence Interval (95%) Function
 
 ```{r}
 
@@ -3871,7 +3840,7 @@ CI <- function(x, alpha = 0.05, which = "ci"){
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Bootstrap Analysis Summary Datatable
 
@@ -3894,14 +3863,13 @@ Summary.boot <- Bootstrap.table %>%
 
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ## Bootstrap Estimates {.tabset .tabset-fade .tabset-pills}
 
 ### **Vmax Estimates (w/95% CI) Plot**
 
-```{r fig.asp=1.2}
+```{r fig.asp=1.2, fig.cap="Bootstrapped parameter estimates with 95% confidence intervals (CI) for final model across all experimental conditions (stratified by CYP2D6 genotype). Black markers with intervals represent the mean estimate and 95% confidence interval of 10 bootstrapped sample populations, blue line represents true estimate of Vmax for specified genotype group, dotted red lines represent 80%-125% lower-and-upper bounds of parameter estimate."}
 
 # Vmax Plot --------------
 ggplot(data = Summary.boot %>% 
@@ -3924,12 +3892,11 @@ ggplot(data = Summary.boot %>%
   ylab("Experimental Condition")
 ```
 
-
--------------------------------------------------------
+------------------------------------------------------------------------
 
 ### **Km Estimates (w/95% CI) Plot**
 
-```{r fig.asp=1.2}
+```{r fig.asp=1.2, fig.cap="Bootstrapped parameter estimates with 95% confidence intervals (CI) for final model across all experimental conditions (stratified by CYP2D6 genotype). Black markers with intervals represent the mean estimate and 95% confidence interval of 10 bootstrapped sample populations, blue line represents true estimate of Km for specified genotype group, dotted red lines represent 80%-125% lower-and-upper bounds of parameter estimate"}
 
 # Km Plot ---------
 ggplot(data = Summary.boot %>% 
@@ -3953,7 +3920,7 @@ ggplot(data = Summary.boot %>%
 
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 # **R Session Information**
 
@@ -3962,9 +3929,6 @@ ggplot(data = Summary.boot %>%
 sessionInfo()
 ```
 
--------------------------------------------------------
+------------------------------------------------------------------------
 
 # **References**
-
-
-
