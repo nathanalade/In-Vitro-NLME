@@ -1,0 +1,276 @@
+---
+title: "**THE UTILITY OF MIXED-EFFECT MODELS IN THE EVALUATION OF COMPLEX GENOMIC TRAITS IN-VITRO**"
+author:
+  - Nathan Alade, M.S.^[University of Washington, Department of Pharmaceutics, correspondence; alade@uw.edu]
+  - Abhinav Nath, Ph.D.^[University of Washington, Department of Medicinal Chemistry]
+  - Nina Isoherannen, Ph.D.*
+  - Kenneth Thummel, Ph.D.*
+date: "Last compiled on: `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  bookdown::pdf_document2:
+    toc: yes
+    number_sections: no
+    highlight: kate
+    citation_package: natbib
+    latex_engine: xelatex
+  bookdown: default
+subtitle: |
+  | **Supplementary Data:** Diagnostic Plots
+  | (with Code)
+bibliography: packages.bib
+csl: American_Chemical_Society.csl
+include-before:
+- '`\newpage{}`{=latex}'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load Workspace
+load("R Output/NLME_Analysis.RData")
+```
+
+\newpage
+
+# **Correspondence**
+
+**Corresponding Author:** Nathan Alade, M.S.
+
+**Address:**
+
+-   University of Washington School of Pharmacy
+
+-   Department of Pharmaceutics
+
+-   H-272 Health Sciences Building, Box 357610
+
+-   Seattle, Washington 98195
+
+**Email:** [alade\@uw.edu](mailto:alade@uw.edu){.email}
+
+**Phone:** 206-543-9434
+
+**Fax:** 206-543-3204
+
+### **Data Availability:**
+
+R Scripts and data necessary to reproduce our analysis are available and can be cloned using the following public repository. (<http://nathanalade.github.io/In-Vitro-NLME/>)
+
+\newpage
+
+# **Final Model Residual Plots (UM/EM)**
+
+## **Rich Study Designs (0-20% CV)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(rich_covar.nlme, main = "UM/EM Rich (0% CV)")
+plot(rich_CV5_covar.nlme, main = "UM/EM Rich (5% CV)")
+plot(rich_CV10_covar.nlme, main = "UM/EM Rich (10% CV)")
+plot(rich_CV20_covar.nlme, main = "UM/EM Rich (20% CV)")
+```
+
+\newpage
+
+## **Sparse Study Designs (3pt, 0-20% CV)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(sparse3pt_covar.nlme, main = "UM/EM Sparse (3pt, 0% CV)")
+plot(sparse3pt_CV5_covar.nlme, main = "UM/EM Sparse (3pt, 5% CV)")
+plot(sparse3pt_CV10_covar.nlme, main = "UM/EM Sparse (3pt, 10% CV)")
+plot(sparse3pt_CV20_covar.nlme, main = "UM/EM Sparse (3pt, 20% CV)")
+```
+
+\newpage
+
+## **Sparse Study Designs (4pt, 0-20% CV)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(sparse4pt_covar.nlme, main = "UM/EM Sparse (4pt, 0% CV)")
+plot(sparse4pt_CV5_covar.nlme, main = "UM/EM Sparse (4pt, 5% CV)")
+plot(sparse4pt_CV10_covar.nlme, main = "UM/EM Sparse (4pt, 10% CV)")
+plot(sparse4pt_CV20_covar.nlme, main = "UM/EM Sparse (4pt, 20% CV)")
+
+```
+
+\newpage
+
+# **Final Model Residual Plots (IM/PM)**
+
+## **Rich Study Designs (IM/PM, 0-20% CV)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(PM_covar.nlme, main = "IM/PM Rich (0% CV)")
+plot(PM_CV5_covar.nlme, main = "IM/PM Rich (5% CV)")
+plot(PM_CV10_covar.nlme, main = "IM/PM Rich (10% CV)")
+plot(PM_CV20_covar.nlme, main = "IM/PM Rich (20% CV)")
+```
+
+\newpage
+
+## **Sparse Study Designs (IM/PM, 3pt, 0-20% CV)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(PM_3pt_covar.nlme, main = "IM/PM Sparse (3pt, 0% CV)")
+plot(PM_3pt_CV5_covar.nlme, main = "IM/PM Sparse (3pt, 5% CV)")
+plot(PM_3pt_CV10_covar.nlme, main = "IM/PM Sparse (3pt, 10% CV)")
+plot(PM_3pt_CV20_covar.nlme, main = "IM/PM Spase (3pt, 20% CV)")
+```
+
+\newpage
+
+## **Sparse Study Designs (IM/PM, 4pt, 0-20% CV)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(PM_4pt_covar.nlme, main = "IM/PM Sparse (4pt, 0% CV)")
+plot(PM_4pt_CV5_covar.nlme, main = "IM/PM Sparse (4pt, 5% CV)")
+plot(PM_4pt_CV10_covar.nlme, main = "IM/PM Sparse (4pt, 10% CV)")
+plot(PM_4pt_CV20_covar.nlme, main = "IM/PM Sparse (4pt, 20% CV)")
+```
+
+\newpage
+
+# **Predicted vs Observed Plots by CYP2D6 Genotype (UM/EM)**
+
+## **Rich Study Designs**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(rich_covar.nlme,log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Rich (0% CV)", 
+     xlab = "log(Fitted values)")
+
+plot(rich_CV5_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Rich (5% CV)", 
+     xlab = "log(Fitted values)")
+
+plot(rich_CV10_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Rich (10% CV)", 
+     xlab = "log(Fitted values)")
+
+plot(rich_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Rich (20% CV)", 
+     xlab = "log(Fitted values)")
+```
+
+\newpage
+
+## **Sparse Study Designs (3pt)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(sparse3pt_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Sparse (3pt, 0% CV)", 
+     xlab = "log(Fitted values)")
+
+plot(sparse3pt_CV5_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Sparse (3pt, 5% CV)", 
+     xlab = "log(Fitted values)")
+
+plot(sparse3pt_CV10_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Sparse (3pt, 10% CV)", 
+     xlab = "log(Fitted values)")
+
+plot(sparse3pt_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Sparse (3pt, 20% CV)", 
+     xlab = "log(Fitted values)")
+```
+
+\newpage
+
+## **Sparse Study Designs (4pt)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(sparse4pt_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Sparse (4pt, 0% CV )", 
+     xlab = "log(Fitted values)")
+
+plot(sparse4pt_CV5_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Sparse (4pt, 5% CV)", 
+     xlab = "log(Fitted values)")
+
+plot(sparse4pt_CV10_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Sparse (4pt, 10% CV)", 
+     xlab = "log(Fitted values)")
+
+plot(sparse4pt_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), main = "Sparse (4pt, 20% CV)", 
+     xlab = "log(Fitted values)")
+```
+
+\newpage
+
+# **Predicted vs Observed Plots by CYP2D6 Genotype (IM/PM)**
+
+## **Rich Study Designs**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(PM_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Rich (0% CV)")
+
+plot(PM_CV5_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Rich (5% CV)")
+
+plot(PM_CV10_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Rich (10% CV)")
+
+plot(PM_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Rich (20% CV)")
+```
+
+\newpage
+
+## **Sparse Study Designs (3pt)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(PM_3pt_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Sparse (3pt, 0% CV)")
+
+plot(PM_3pt_CV5_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Sparse (3pt, 5% CV)")
+
+plot(PM_3pt_CV10_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Sparse (3pt 10% CV)")
+
+plot(PM_3pt_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Sparse (3pt, 20% CV)")
+```
+
+\newpage
+
+## **Sparse Study Designs (4pt)**
+
+```{r fig.show="hold", out.width="50%"}
+par(mfrow = c(1, 2))
+plot(PM_4pt_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Sparse (4pt, 0% CV)")
+
+plot(PM_4pt_CV5_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Sparse (4pt, 5% CV)")
+
+plot(PM_4pt_CV10_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Sparse (4pt, 10% CV)")
+
+plot(PM_4pt_CV20_covar.nlme, log(V)~log(fitted(.))|Diplotype, 
+     abline = c(0,1), xlab = "log(Fitted values)", 
+     main = "PM Sparse (4pt, 20% CV)")
+```
