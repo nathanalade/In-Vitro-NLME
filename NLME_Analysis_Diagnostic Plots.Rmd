@@ -1,7 +1,7 @@
 ---
 title: "**THE UTILITY OF MIXED-EFFECT MODELS IN THE EVALUATION OF COMPLEX GENOMIC TRAITS IN-VITRO**"
 author:
-  - Nathan Alade, M.S.^[University of Washington, Department of Pharmaceutics, correspondence; alade@uw.edu]
+  - Nathan Alade, M.S.^[University of Washington, Department of Pharmaceutics]
   - Abhinav Nath, Ph.D.^[University of Washington, Department of Medicinal Chemistry]
   - Nina Isoherannen, Ph.D.*
   - Kenneth Thummel, Ph.D.*
