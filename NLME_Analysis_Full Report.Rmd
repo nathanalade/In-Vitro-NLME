@@ -41,6 +41,9 @@ knitr::opts_chunk$set(echo = TRUE, cache = TRUE,
                       message = FALSE, 
                       eval = TRUE,
                       fig.align = 'center')
+
+# Load Environment Quickly -----
+# load("R Output/NLME_Analysis.RData")
 ```
 
 ```{r Packages, eval=T, message=FALSE}
@@ -251,7 +254,7 @@ dist.plot <- ggplot(
   geom_histogram(aes(fill = Diplotype), color = "black", bins = 100)+
     ggeasy::easy_remove_legend_title()+
   theme_bw(base_size = 14)+
-  xlab(bquote(V[Max]))+
+  xlab(bquote(V[max]))+
   ylab("Population (n)")
 
 
@@ -273,7 +276,7 @@ dist.plot2 <- ggplot(
   geom_histogram(aes(fill = Diplotype), color = "black", bins = 100)+
     ggeasy::easy_remove_legend_title()+
   theme_bw(base_size = 14)+
-  xlab(bquote(K[M](uM)))+
+  xlab(bquote(K[m](uM)))+
   ylab("Population (n)")+
   scale_x_log10()
 
@@ -2817,8 +2820,8 @@ sensitivity_mid_end.plot <- ggplot(data = sensitivity.data %>%
   ylab("4-OH-Atomoxetine Formation\n(pmol/min/mg protein)")+
   ggeasy::easy_move_legend(to = "top")
 
-sensitivity_mid_end.plot+
-  ggeasy::easy_add_legend_title("Genotype")
+sensitivity_mid_end.plot+ ggeasy::easy_add_legend_title("Genotype")
+
 ```
 
 ------------------------------------------------------------------------
