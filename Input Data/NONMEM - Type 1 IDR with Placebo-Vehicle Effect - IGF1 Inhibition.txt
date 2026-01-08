@@ -1,0 +1,164 @@
+﻿$PROBLEM Type 1 IDR with Placebo/Vehicle Effect - IGF1 Inhibition
+; 2-CMT PK, 1st order absorption, Kin inhibition
+; Placebo effect modeled via auxiliary transit compartments
+
+
+$INPUT ID TIME TAD AMT EVID CMT DV MDV DOSE TRTF
+; TAD  = time after dose (for both drug and procedure)
+; TRTF = treatment flag (0=placebo, 1=active)
+; CMT  = 1 for drug dose, 4 for placebo "dose"
+
+
+$DATA data.csv IGNORE=@
+
+
+$SUBROUTINE ADVAN13 TOL=9
+
+
+$MODEL
+NCOMP=6
+COMP=(DEPOT)       ; CMT 1: Drug absorption depot
+COMP=(CENTRAL)     ; CMT 2: Central PK
+COMP=(PERIPH)      ; CMT 3: Peripheral PK
+COMP=(PLDEPOT)     ; CMT 4: Placebo effect depot
+COMP=(PLEFFECT)    ; CMT 5: Placebo effect "amount"
+COMP=(RESPONSE)    ; CMT 6: IGF-1 response
+
+
+$PK
+; ========== PK Parameters ==========
+CL   = THETA(1) * EXP(ETA(1))
+V2   = THETA(2) * EXP(ETA(2))
+Q    = THETA(3)
+V3   = THETA(4)
+KA   = THETA(5) * EXP(ETA(3))
+
+
+K20 = CL/V2
+K23 = Q/V2
+K32 = Q/V3
+S2  = V2
+
+
+; ========== PD Parameters (Drug) ==========
+IMAX = THETA(6)                    ; Fixed or estimate
+IC50 = THETA(7) * EXP(ETA(4))
+KOUT = THETA(8) * EXP(ETA(5))
+KIN  = KOUT                        ; R0 = KIN/KOUT = 1
+
+
+; ========== Placebo Effect Parameters ==========
+KAPL   = THETA(9)                  ; Onset rate (~0.1-0.5 hr-1)
+KELPL  = THETA(10)                 ; Offset rate (~0.02-0.1 hr-1)
+IMAXPL = THETA(11) * EXP(ETA(6))   ; Max inhibition (~0.1-0.4)
+SCPL   = THETA(12)                 ; Scaling constant
+
+
+; ========== Initial Conditions ==========
+A_0(6) = 1    ; Baseline IGF-1 (normalized)
+
+
+$DES
+; ----- PK -----
+DADT(1) = -KA * A(1)
+DADT(2) =  KA * A(1) - K20*A(2) - K23*A(2) + K32*A(3)
+DADT(3) =  K23 * A(2) - K32 * A(3)
+
+
+; ----- Concentration -----
+CP = A(2)/V2
+
+
+; ----- Placebo Effect Transit -----
+DADT(4) = -KAPL * A(4)
+DADT(5) =  KAPL * A(4) - KELPL * A(5)
+
+
+; ----- Placebo Inhibition -----
+; Normalize so peak effect ~ IMAXPL
+; The Bateman peak occurs at tmax = ln(KAPL/KELPL)/(KAPL-KELPL)
+; Scale A(5) to achieve desired IMAXPL
+PLAMT  = A(5) * SCPL
+INHPL  = IMAXPL * PLAMT / (1 + PLAMT)   ; Soft saturation to cap at IMAXPL
+
+
+; Alternative: Simple linear scaling (if PLAMT well-behaved)
+; INHPL = A(5) * SCPL
+; But ensure INHPL <= IMAXPL
+
+
+; ----- Drug Inhibition -----
+INHDRUG = IMAX * CP / (IC50 + CP)
+
+
+; ----- Combined Inhibition -----
+; Additive on Kin (capped at 1 to prevent negative production)
+INHTOT = INHDRUG + INHPL
+IF(INHTOT.GT.0.99) INHTOT = 0.99
+
+
+; ----- Response (IGF-1) -----
+DADT(6) = KIN * (1 - INHTOT) - KOUT * A(6)
+
+
+$ERROR
+IPRED = A(6)
+R0    = 1         ; Baseline for proportional error
+
+
+; Proportional + additive error
+W     = SQRT(THETA(13)**2 * IPRED**2 + THETA(14)**2)
+Y     = IPRED + W * EPS(1)
+
+
+; Capture for tables
+CP_   = A(2)/V2
+INHD  = IMAX * CP_ / (IC50 + CP_)
+INHP  = IMAXPL * A(5) * SCPL / (1 + A(5) * SCPL)
+
+
+$THETA
+; PK
+(0, 10)      ; 1  CL (L/hr)
+(0, 50)      ; 2  V2 (L)
+(0, 5)       ; 3  Q (L/hr)
+(0, 100)     ; 4  V3 (L)
+(0, 0.5)     ; 5  KA (hr-1)
+; PD - Drug
+(0, 0.9)     ; 6  IMAX (fixed or estimate)
+(0, 100)     ; 7  IC50 (ng/mL or appropriate units)
+(0, 0.05)    ; 8  KOUT (hr-1) - governs ~14-20hr half-life for IGF-1
+; Placebo
+(0, 0.2)     ; 9  KAPL (hr-1) - onset
+(0, 0.05)    ; 10 KELPL (hr-1) - offset
+(0, 0.25)    ; 11 IMAXPL - max placebo inhibition
+(0, 1)       ; 12 SCPL - scaling factor
+; Error
+(0.1)        ; 13 Proportional error
+(0.05)       ; 14 Additive error
+
+
+$OMEGA
+0.09         ; 1 CL
+0.09         ; 2 V2
+0.09         ; 3 KA
+0.09         ; 4 IC50
+0.09         ; 5 KOUT
+0.09         ; 6 IMAXPL
+
+
+$SIGMA
+1 FIX
+
+
+$EST METHOD=1 INTER MAXEVAL=9999 PRINT=5 NOABORT POSTHOC
+$EST METHOD=SAEM NBURN=500 NITER=1000 PRINT=10 ISAMPLE=2
+$EST METHOD=IMP INTER EONLY=1 NITER=5 ISAMPLE=1000 PRINT=1
+
+
+$COV PRINT=E UNCONDITIONAL
+
+
+$TABLE ID TIME TAD CP_ IPRED INHD INHP CWRES NPDE
+       ETA1 ETA2 ETA3 ETA4 ETA5 ETA6
+       NOPRINT ONEHEADER FILE=sdtab
