@@ -1,0 +1,466 @@
+﻿;; =============================================================================
+;; NONMEM CONTROL STREAM
+;; Type 1 Indirect Response Model with Placebo/Vehicle Effect
+;; 
+;; PK:  2-compartment, first-order oral absorption
+;; PD:  Kin inhibition (drug effect via Imax model)
+;; PLB: Time-dependent placebo effect via auxiliary compartments
+;;
+;; Author: [Your name]
+;; Date:   [Date]
+;; =============================================================================
+
+
+$PROBLEM IGF-1 Inhibition - Type 1 IDR with Placebo Effect
+
+
+;; =============================================================================
+;; DATA SPECIFICATION
+;; =============================================================================
+;; Required columns:
+;;   ID    = Subject identifier
+;;   TIME  = Clock time (hours)
+;;   AMT   = Dose amount (drug in CMT 1, virtual placebo=1 in CMT 4)
+;;   EVID  = Event ID (1=dose, 0=observation)
+;;   CMT   = Compartment (1=drug depot, 4=placebo depot, 6=response obs)
+;;   DV    = Observed IGF-1 (normalized to baseline, so baseline ≈ 1)
+;;   MDV   = Missing DV flag
+;;
+;; DOSING STRATEGY:
+;;   - At each dosing occasion, BOTH arms receive a virtual dose of 1 into CMT 4
+;;   - Active arm ALSO receives actual drug dose into CMT 1
+;;   - This ensures placebo effect is applied to all subjects
+;; =============================================================================
+
+
+$INPUT ID TIME AMT EVID CMT DV MDV
+
+
+$DATA data.csv IGNORE=@
+
+
+;; =============================================================================
+;; MODEL STRUCTURE
+;; =============================================================================
+;; Using ADVAN13 (general ODE solver) with 6 compartments:
+;;
+;;   CMT 1: DEPOT     - Drug absorption depot
+;;   CMT 2: CENTRAL   - Central PK compartment  
+;;   CMT 3: PERIPH    - Peripheral PK compartment
+;;   CMT 4: PLDEPOT   - Placebo effect depot (virtual, receives "dose" of 1)
+;;   CMT 5: PLEFFECT  - Placebo effect driver (generates Bateman curve)
+;;   CMT 6: RESPONSE  - IGF-1 response (observed)
+;;
+;; Schematic:
+;;
+;;   [Drug Dose]          [Virtual Placebo Dose = 1]
+;;        |                         |
+;;        v                         v
+;;   +---------+               +-----------+
+;;   | DEPOT   |               | PLDEPOT   |
+;;   | (CMT 1) |               | (CMT 4)   |
+;;   +----+----+               +-----+-----+
+;;        | KA                       | KAPL
+;;        v                          v
+;;   +---------+    K23        +-----------+
+;;   | CENTRAL |<------->      | PLEFFECT  |-----> INH_PL(t)
+;;   | (CMT 2) |    K32        | (CMT 5)   |       (Bateman profile)
+;;   +----+----+               +-----+-----+
+;;        |                          | KELPL
+;;        | CP(t)                    v
+;;        v                       [eliminated]
+;;   +---------+
+;;   | PERIPH  |
+;;   | (CMT 3) |
+;;   +---------+
+;;
+;;        CP(t) -----> INH_DRUG(t) = IMAX * CP / (IC50 + CP)
+;;
+;;                          Combined Inhibition
+;;                                 |
+;;                                 v
+;;                         +---------------+
+;;                         |   RESPONSE    |
+;;                         |   (CMT 6)     |
+;;                         |               |
+;;                         | dR/dt = Kin*(1 - INH_DRUG)*(1 - INH_PL) - Kout*R
+;;                         +---------------+
+;;
+;; =============================================================================
+
+
+$SUBROUTINE ADVAN13 TOL=9
+
+
+$MODEL
+NCOMP=6
+COMP=(DEPOT)      ; CMT 1
+COMP=(CENTRAL)    ; CMT 2
+COMP=(PERIPH)     ; CMT 3
+COMP=(PLDEPOT)    ; CMT 4
+COMP=(PLEFFECT)   ; CMT 5
+COMP=(RESPONSE)   ; CMT 6
+
+
+;; =============================================================================
+;; PARAMETER DEFINITIONS ($PK)
+;; =============================================================================
+
+
+$PK
+
+
+;; ---------------------------------------------------------------------------
+;; PK PARAMETERS (2-compartment, first-order absorption)
+;; ---------------------------------------------------------------------------
+
+
+TVCL = THETA(1)              ; Typical value of clearance (L/hr)
+TVV2 = THETA(2)              ; Typical value of central volume (L)
+TVQ  = THETA(3)              ; Inter-compartmental clearance (L/hr)
+TVV3 = THETA(4)              ; Peripheral volume (L)
+TVKA = THETA(5)              ; Absorption rate constant (hr-1)
+
+
+CL = TVCL * EXP(ETA(1))      ; Individual clearance
+V2 = TVV2 * EXP(ETA(2))      ; Individual central volume
+Q  = TVQ                      ; Fixed (or add IIV if needed)
+V3 = TVV3                     ; Fixed (or add IIV if needed)
+KA = TVKA * EXP(ETA(3))      ; Individual absorption rate
+
+
+;; Micro-rate constants
+K20 = CL/V2                  ; Elimination rate constant
+K23 = Q/V2                   ; Central to peripheral
+K32 = Q/V3                   ; Peripheral to central
+
+
+;; Scaling for concentration
+S2 = V2                      ; So A(2)/S2 = concentration
+
+
+;; ---------------------------------------------------------------------------
+;; PD PARAMETERS (Drug Effect - Imax Model)
+;; ---------------------------------------------------------------------------
+
+
+TVIMAX = THETA(6)            ; Maximum inhibition (0-1, often fix to 1)
+TVIC50 = THETA(7)            ; Concentration for 50% of Imax (ng/mL)
+TVKOUT = THETA(8)            ; Response elimination rate constant (hr-1)
+
+
+IMAX = TVIMAX                ; Can add IIV: TVIMAX * EXP(ETA(x))
+IC50 = TVIC50 * EXP(ETA(4))  ; Individual IC50
+KOUT = TVKOUT * EXP(ETA(5))  ; Individual Kout
+
+
+;; Baseline constraint: At steady state with no drug, R0 = KIN/KOUT
+;; If DV is normalized so baseline = 1, then KIN = KOUT
+KIN = KOUT                   ; Ensures R0 = 1
+
+
+;; ---------------------------------------------------------------------------
+;; PLACEBO EFFECT PARAMETERS
+;; ---------------------------------------------------------------------------
+;; The placebo effect is modeled as a "virtual 1-compartment oral PK" that
+;; produces a Bateman curve (rise then fall) to drive time-varying inhibition.
+;;
+;; KAPL  = rate of onset (analogous to ka)
+;; KELPL = rate of offset (analogous to ke)  
+;; IMAXPL = maximum fractional inhibition at peak placebo effect
+;;
+;; Selecting KAPL > KELPL gives typical rise-to-peak-then-decline profile.
+;; Half-life of decline ≈ ln(2)/KELPL
+;; ---------------------------------------------------------------------------
+
+
+TVKAPL   = THETA(9)          ; Placebo onset rate (hr-1)
+TVKELPL  = THETA(10)         ; Placebo offset rate (hr-1)
+TVIMAXPL = THETA(11)         ; Maximum placebo inhibition (0-1)
+
+
+KAPL   = TVKAPL              ; Can add IIV if warranted
+KELPL  = TVKELPL             ; Can add IIV if warranted
+IMAXPL = TVIMAXPL * EXP(ETA(6))
+
+
+;; ---------------------------------------------------------------------------
+;; NORMALIZATION FACTOR FOR PLACEBO EFFECT
+;; ---------------------------------------------------------------------------
+;; The auxiliary compartment A(5) follows Bateman kinetics with peak value
+;; that depends on KAPL and KELPL. We compute a normalization factor (PKNORM)
+;; so that: INH_PL = IMAXPL * A(5) / PKNORM
+;;
+;; This ensures that when A(5) reaches its peak, INH_PL = IMAXPL exactly,
+;; making IMAXPL directly interpretable as "maximum placebo inhibition".
+;;
+;; For a unit dose:
+;;   tmax = ln(KAPL/KELPL) / (KAPL - KELPL)
+;;   A5_peak = KAPL/(KAPL-KELPL) * (exp(-KELPL*tmax) - exp(-KAPL*tmax))
+;;
+;; Edge case: if KAPL ≈ KELPL, the limit gives A5_peak = exp(-1) ≈ 0.368
+;; ---------------------------------------------------------------------------
+
+
+;; Calculate time of peak
+DIFK = KAPL - KELPL
+
+
+IF(ABS(DIFK).GT.0.0001) THEN
+    ;; Standard case: KAPL ≠ KELPL
+    TPKPL = LOG(KAPL/KELPL) / DIFK
+    PKNORM = (KAPL/DIFK) * (EXP(-KELPL*TPKPL) - EXP(-KAPL*TPKPL))
+ELSE
+    ;; Edge case: KAPL ≈ KELPL (limit of Bateman function)
+    ;; Peak occurs at t = 1/KAPL with value = exp(-1)
+    PKNORM = EXP(-1.0)
+ENDIF
+
+
+;; Safety check: PKNORM should never be zero or negative
+IF(PKNORM.LT.0.0001) PKNORM = 0.0001
+
+
+;; ---------------------------------------------------------------------------
+;; INITIAL CONDITIONS
+;; ---------------------------------------------------------------------------
+;; Response starts at normalized baseline = 1
+;; All other compartments start at 0 (doses come from data file)
+
+
+A_0(1) = 0       ; Drug depot (filled by dosing record)
+A_0(2) = 0       ; Central PK
+A_0(3) = 0       ; Peripheral PK
+A_0(4) = 0       ; Placebo depot (filled by dosing record with AMT=1)
+A_0(5) = 0       ; Placebo effect driver
+A_0(6) = 1       ; Response at baseline (normalized IGF-1 = 1)
+
+
+;; =============================================================================
+;; DIFFERENTIAL EQUATIONS ($DES)
+;; =============================================================================
+
+
+$DES
+
+
+;; ---------------------------------------------------------------------------
+;; PK: 2-compartment with first-order absorption
+;; ---------------------------------------------------------------------------
+
+
+DADT(1) = -KA * A(1)                                    ; Depot depletion
+DADT(2) = KA*A(1) - K20*A(2) - K23*A(2) + K32*A(3)     ; Central compartment
+DADT(3) = K23*A(2) - K32*A(3)                           ; Peripheral compartment
+
+
+;; Drug concentration in central compartment
+CP = A(2)/V2
+
+
+;; ---------------------------------------------------------------------------
+;; PLACEBO EFFECT: Auxiliary compartments generating Bateman curve
+;; ---------------------------------------------------------------------------
+;; These two compartments function exactly like a 1-cmt oral PK model.
+;; A(4) = depot that releases into A(5)
+;; A(5) = "effect" compartment whose amount drives inhibition
+
+
+DADT(4) = -KAPL * A(4)                                  ; Placebo depot depletion
+DADT(5) = KAPL*A(4) - KELPL*A(5)                        ; Placebo effect driver
+
+
+;; ---------------------------------------------------------------------------
+;; INHIBITION CALCULATIONS
+;; ---------------------------------------------------------------------------
+
+
+;; Drug inhibition: Standard Imax model
+INH_DRUG = IMAX * CP / (IC50 + CP)
+
+
+;; Placebo inhibition: Normalized so peak = IMAXPL
+;; A(5)/PKNORM gives a value that peaks at 1.0
+;; Multiplying by IMAXPL scales the peak to IMAXPL
+INH_PL = IMAXPL * A(5) / PKNORM
+
+
+;; Safety cap: Ensure inhibition doesn't exceed 1
+IF(INH_PL.GT.0.99) INH_PL = 0.99
+
+
+;; ---------------------------------------------------------------------------
+;; RESPONSE: Type 1 Indirect Response Model (Kin Inhibition)
+;; ---------------------------------------------------------------------------
+;; dR/dt = Kin * (1 - inhibition) - Kout * R
+;;
+;; Combined inhibition approach: MULTIPLICATIVE
+;; This assumes drug and placebo act through independent mechanisms.
+;; (1 - INH_DRUG) * (1 - INH_PL) naturally caps total inhibition < 100%
+;;
+;; Alternative: ADDITIVE would be (1 - INH_DRUG - INH_PL) but requires
+;; explicit capping to prevent negative production rates.
+;; ---------------------------------------------------------------------------
+
+
+DADT(6) = KIN * (1 - INH_DRUG) * (1 - INH_PL) - KOUT * A(6)
+
+
+;; =============================================================================
+;; ERROR MODEL ($ERROR)
+;; =============================================================================
+
+
+$ERROR
+
+
+;; Individual prediction (IGF-1, normalized)
+IPRED = A(6)
+
+
+;; Capture derived quantities for output
+CP_OUT   = A(2)/V2           ; Plasma concentration
+INHD_OUT = IMAX * CP_OUT / (IC50 + CP_OUT)   ; Drug inhibition
+INHP_OUT = IMAXPL * A(5) / PKNORM            ; Placebo inhibition
+IF(INHP_OUT.GT.0.99) INHP_OUT = 0.99
+
+
+;; Combined residual error model (proportional + additive)
+;; W = sqrt(proportional^2 * IPRED^2 + additive^2)
+PROP = THETA(12)             ; Proportional error (CV as fraction)
+ADD  = THETA(13)             ; Additive error (same units as DV)
+W    = SQRT(PROP**2 * IPRED**2 + ADD**2)
+
+
+;; Protect against W = 0
+IF(W.LT.0.0001) W = 0.0001
+
+
+;; Observation
+Y = IPRED + W * EPS(1)
+
+
+;; IWRES for diagnostics
+IWRES = (DV - IPRED) / W
+
+
+;; =============================================================================
+;; INITIAL ESTIMATES
+;; =============================================================================
+
+
+$THETA
+;; --- PK Parameters ---
+(0, 10)           ; TH1  CL     Clearance (L/hr)
+(0, 50)           ; TH2  V2     Central volume (L)
+(0, 5)            ; TH3  Q      Inter-compartmental CL (L/hr)
+(0, 100)          ; TH4  V3     Peripheral volume (L)
+(0, 0.5)          ; TH5  KA     Absorption rate constant (hr-1)
+
+
+;; --- PD Parameters (Drug Effect) ---
+(0.9 FIX)         ; TH6  IMAX   Maximum drug inhibition (fix or estimate)
+(0, 50)           ; TH7  IC50   Concentration for 50% inhibition (ng/mL)
+(0, 0.05)         ; TH8  KOUT   Response turnover rate (hr-1)
+                  ;             Note: t1/2 of IGF-1 response = ln(2)/KOUT
+                  ;             KOUT=0.05 gives t1/2 ≈ 14 hr
+
+
+;; --- Placebo Effect Parameters ---
+(0, 0.2)          ; TH9  KAPL   Placebo onset rate (hr-1)
+                  ;             Larger = faster onset
+(0, 0.04)         ; TH10 KELPL  Placebo offset rate (hr-1)
+                  ;             t1/2 = ln(2)/0.04 ≈ 17 hr
+                  ;             Return to baseline ≈ 4-5 half-lives ≈ 68-85 hr
+(0, 0.25)         ; TH11 IMAXPL Maximum placebo inhibition (fraction)
+                  ;             0.25 = 25% max reduction in Kin from placebo
+
+
+;; --- Residual Error ---
+(0, 0.1)          ; TH12 PROP   Proportional error (~10% CV)
+(0, 0.05)         ; TH13 ADD    Additive error
+
+
+;; =============================================================================
+;; INTER-INDIVIDUAL VARIABILITY
+;; =============================================================================
+;; Diagonal OMEGA matrix (variances on log scale)
+;; Variance = 0.09 corresponds to ~30% CV
+;; Variance = 0.0225 corresponds to ~15% CV
+
+
+$OMEGA BLOCK(1)
+0.09              ; ETA1 on CL
+
+
+$OMEGA BLOCK(1)
+0.09              ; ETA2 on V2
+
+
+$OMEGA BLOCK(1)
+0.09              ; ETA3 on KA
+
+
+$OMEGA BLOCK(1)
+0.09              ; ETA4 on IC50
+
+
+$OMEGA BLOCK(1)
+0.09              ; ETA5 on KOUT
+
+
+$OMEGA BLOCK(1)
+0.09              ; ETA6 on IMAXPL
+
+
+;; =============================================================================
+;; RESIDUAL ERROR VARIANCE
+;; =============================================================================
+
+
+$SIGMA
+1 FIX             ; Variance fixed to 1; actual error in THETA(12-13)
+
+
+;; =============================================================================
+;; ESTIMATION
+;; =============================================================================
+
+
+;; First-order conditional estimation with interaction
+$EST METHOD=1 INTER MAXEVAL=9999 PRINT=5 NOABORT POSTHOC NSIG=3 SIGL=9
+
+
+;; Optional: SAEM for complex models (comment out if not needed)
+; $EST METHOD=SAEM NBURN=500 NITER=1000 PRINT=10 ISAMPLE=2 SEED=12345
+; $EST METHOD=IMP INTER EONLY=1 NITER=5 ISAMPLE=1000 PRINT=1
+
+
+;; =============================================================================
+;; COVARIANCE
+;; =============================================================================
+
+
+$COV PRINT=E UNCONDITIONAL
+
+
+;; =============================================================================
+;; OUTPUT TABLES
+;; =============================================================================
+
+
+;; Standard diagnostics table
+$TABLE ID TIME AMT EVID CMT
+       IPRED CWRES IWRES NPDE
+       ETA1 ETA2 ETA3 ETA4 ETA5 ETA6
+       NOPRINT ONEHEADER FILE=sdtab001
+
+
+;; Parameter table (one row per subject)
+$TABLE ID CL V2 Q V3 KA IC50 KOUT IMAXPL
+       NOPRINT ONEHEADER FIRSTONLY FILE=patab001
+
+
+;; PK/PD output table (for plotting)
+$TABLE ID TIME CP_OUT INHD_OUT INHP_OUT IPRED DV
+       NOPRINT ONEHEADER FILE=cotab001
